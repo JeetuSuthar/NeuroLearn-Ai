@@ -14,8 +14,9 @@ The project aims to provide cutting-edge solutions in AI-powered learning and ca
 
 ---
 
-## 📂 Project Status
+## 📂 DB SCHEMA
 🔨 **Work in Progress**  
-This repository is actively under development. Expect frequent updates and major changes as features evolve.  
+<img width="1138" height="782" alt="image" src="https://github.com/user-attachments/assets/49160fe8-876e-4f61-b7cf-2989b8cdccca" />
+
 
 ---
