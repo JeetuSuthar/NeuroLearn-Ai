@@ -16,7 +16,11 @@ The project aims to provide cutting-edge solutions in AI-powered learning and ca
 
 ## 📂 DB SCHEMA
 🔨 **Work in Progress**  
+<<<<<<< HEAD
 <img width="1138" height="782" alt="image" src="https://github.com/user-attachments/assets/49160fe8-876e-4f61-b7cf-2989b8cdccca" />
+=======
+<img width="1138" height="782" alt="image" src="https://github.com/user-attachments/assets/02bfd30c-1e44-430b-a9a6-e716e5494464" />
+>>>>>>> 8c2b78c1aa57188226fed1b87f4eade3024700a9
 
 
 ---
