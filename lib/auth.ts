@@ -7,50 +7,34 @@ import bcrypt from "bcryptjs"
 
 const prisma = new PrismaClient()
 
+// Basic environment checks to help diagnose production issues where
+// NextAuth requires `NEXTAUTH_URL` and `NEXTAUTH_SECRET` to be set.
+const _nextAuthUrl = process.env.NEXTAUTH_URL
+const _nextAuthSecretSet = !!process.env.NEXTAUTH_SECRET
+if (!_nextAuthUrl || !_nextAuthSecretSet) {
+  console.warn(
+    '[NextAuth][env-check] NEXTAUTH_URL=%s NEXTAUTH_SECRET_SET=%s',
+    _nextAuthUrl || 'MISSING',
+    _nextAuthSecretSet
+  )
+}
+
 export const authOptions: any = {
+  trustHost: true,
+  useSecureCookies: process.env.NODE_ENV === 'production',
   adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   providers: [
     CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        address: { label: "Wallet Address", type: "text" }
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Handle wallet login
-        if (credentials?.address && !credentials?.email && !credentials?.password) {
-          const user = await prisma.user.findUnique({
-            where: {
-              walletAddress: credentials.address
-            }
-          })
-
-          if (!user) {
-            // Create new user with wallet address
-            const newUser = await prisma.user.create({
-              data: {
-                walletAddress: credentials.address,
-                email: `${credentials.address}@wallet.local`
-              }
-            })
-            return {
-              id: newUser.id,
-              email: newUser.email,
-              name: newUser.name,
-              image: newUser.image,
-            }
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-          }
-        }
-
-        // Handle email/password login
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -83,24 +67,48 @@ export const authOptions: any = {
       }
     })
   ],
-  session: {
-    strategy: "jwt"
-  },
   pages: {
     signIn: "/auth/signin"
   },
   callbacks: {
     async jwt({ token, user }: { token: Record<string, unknown>, user?: User }) {
       if (user) {
-        token.id = user.id
+        // Attach user id into the token for downstream session population.
+        // This log helps confirm that the JWT callback runs in production.
+        try {
+          // user may be a partial object depending on provider
+          // Avoid logging sensitive info; only log the id presence.
+          // @ts-ignore
+          const uid = user?.id ?? '[no-id]'
+          console.log('[NextAuth][jwt] attaching user id:', uid)
+        } catch (e) {
+          console.warn('[NextAuth][jwt] logging error', e)
+        }
+        token.id = (user as any).id
       }
       return token
     },
     async session({ session, token }: { session: Session, token: Record<string, unknown> }) {
-      if (token && session.user) {
-        session.user.id = token.id as string
+      // Populate session.user.id from the token for client access.
+      try {
+        if (token && session.user) {
+          // Avoid exposing token contents; only ensure id is present.
+          session.user.id = token.id as string
+        }
+        console.log('[NextAuth][session] session created, userId=', session.user?.id ?? 'none', 'token=', token.id ?? 'no-id')
+      } catch (e) {
+        console.warn('[NextAuth][session] error populating session', e)
       }
       return session
+    }
+  },
+  events: {
+    async signIn({ user, isNewUser }: any) {
+      try {
+        console.log('[NextAuth][event] signIn userId=', user?.id ?? 'unknown', 'isNewUser=', !!isNewUser)
+      } catch (e) {
+        console.warn('[NextAuth][event] signIn logging failed', e)
+      }
     }
   }
 }
